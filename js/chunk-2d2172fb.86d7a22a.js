@@ -1,0 +1,2 @@
+(window["webpackJsonp"]=window["webpackJsonp"]||[]).push([["chunk-2d2172fb"],{c63e:function(n,t,o){"use strict";o.r(t);var e=function(){var n=this,t=n.$createElement,o=n._self._c||t;return o("div",{attrs:{id:"error"}},[n._v('\n    "好像有什么出错了，刷新试一试"\n    '),o("el-button",{on:{click:n.goto}},[n._v("返回登陆")])],1)},r=[],c=(o("cadf"),o("551c"),o("097d"),{methods:{goto:function(){this.$router.push("/login")}}}),u=c,i=o("2877"),l=Object(i["a"])(u,e,r,!1,null,null,null);l.options.__file="ErrorPage.vue";t["default"]=l.exports}}]);
+//# sourceMappingURL=chunk-2d2172fb.86d7a22a.js.map

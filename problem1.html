@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>Problem 1</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+</head>
+
+<body>
+    <p>Click to add an agent; <span>Agent number: </span> <span id="agent_num"></span></p>
+    <span>FPS:</span><span id="fps"></span>
+    
+    <canvas id="canvas" width="600" height="600" />
+    
+
+    <script>
+        let canvas = document.getElementById('canvas');
+
+        let ctx = canvas.getContext('2d');
+
+        let camera = {
+            top  :1.5, 
+            left :-1.5, 
+            width : 3,
+        }
+        const camera_height = ()=> {
+            return canvas.height * camera.width / canvas.width;
+        }
+
+        const camera_point_to_canvas = (x,y)=> {
+            return {
+                x: (x - camera.left)*canvas.width / camera.width,
+                y: (camera.top - y)*canvas.height / camera_height(),
+            }
+        }
+        const camera_length_to_canvas = (r) => {
+            return r*canvas.width / camera.width
+        }
+
+        let agents = [];
+        let center = {x:0,y:0,R:1};
+        let alpha = 100;
+        let sprites = []; // {x,y,life}
+
+        const add_agents = ({x,y,vx=0,vy=0})=> {
+            agents.push({x,y,vx,vy});
+        }
+        for(i=0;i<2;i++) {
+            add_agents({x:Math.random()*2-1,y:Math.random()*2-1,vx: Math.random(),vy:Math.random()})
+           
+        }
+        agents = agents.filter(a => Math.abs(a.x) > 0.1 && Math.abs(a.y) > 0.1)
+
+        
+
+        const auto_set_camera = () => {
+            let x = {
+                min:Math.min(...(agents.map(agent=>agent.x)))-0.2,
+                max:Math.max(...(agents.map(agent=>agent.x)))+0.2,
+            }
+            let y = {
+                min:Math.min(...(agents.map(agent=>agent.y)))-0.2,
+                max:Math.max(...(agents.map(agent=>agent.y)))+0.2,
+            }
+            console.log(Math.min(agents.map(agent=>agent.x)))
+            camera.left = x.min;
+            camera.top = y.max;
+            camera.width = x.max - x.min;
+         
+        }
+
+        let lastUpdatedTime = Date.now()
+        let scale_of_time = 1;
+        const agents_next_tick = () => {
+            const now = Date.now()
+            let dt = scale_of_time * (now- lastUpdatedTime) / 1000;
+            dt = Math.min(0.1,dt)
+            
+            document.getElementById("agent_num").innerHTML = `${agents.length}`
+            
+            document.getElementById("fps").innerHTML = `${Math.round(1/dt)}`
+            lastUpdatedTime = now
+
+            sprites.forEach(s=> {
+                s.life -= dt;
+            })
+            sprites = sprites.filter(s=>s.life > 0);
+
+            agents.forEach((agent,i) => {
+                sprites.push({x:agent.x,y:agent.y,life:1});
+
+                agent.x += agent.vx *dt;
+                agent.y += agent.vy *dt;
+
+                const d = Math.sqrt(Math.pow(agent.x - center.x,2)+Math.pow(agent.y-center.y,2));
+                let ux = -5 * agent.vx - 4*(agent.x - center.x)* (Math.pow(d/center.R,2) - 1) ;
+                let uy = -5 * agent.vy - 4*(agent.y - center.y)* (Math.pow(d/center.R,2) - 1) ;
+
+                // 向心力
+                vt = ( -(agent.y - center.y)*agent.vx + (agent.x - center.x)*agent.vy)/d
+                //vt = Math.sqrt(Math.pow(agent.vx,2)+Math.pow(agent.vy,2));
+                ux += vt*vt*(center.x - agent.x) / (d*d);
+                uy += vt*vt*(center.y - agent.y) / (d*d);
+                //切向力
+                ux += -(agent.y - center.y)/d;
+                uy += (agent.x - center.x)/d;
+                //防止碰撞
+                agents.forEach((agentj,j) => {
+                    if (i == j) {
+                        return;
+                    }
+
+                    const dij = Math.sqrt(Math.pow(agent.x - agentj.x,2)+Math.pow(agent.y-agentj.y,2));
+                    ux += -Math.exp(-alpha*dij*dij)*(-alpha)*(agent.x - agentj.x);
+                    uy += -Math.exp(-alpha*dij*dij)*(-alpha)*(agent.y - agentj.y);
+                })
+
+                agent.vx += ux *dt;
+                agent.vy += uy *dt;
+            })
+            
+        }
+        const plot = () => {
+            agents_next_tick();
+           //auto_set_camera();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.beginPath();
+            let {x,y} = camera_point_to_canvas(center.x,center.y)
+            let r = camera_length_to_canvas(center.R);
+            ctx.strokeStyle = "rgb(200,220,220)"
+            ctx.arc(x,y,r,0,2*Math.PI,true);
+            ctx.stroke();
+            
+            sprites.forEach(s=> {
+                let {x,y} = camera_point_to_canvas(s.x,s.y)
+                let r = camera_length_to_canvas(0.02 * s.life/1);
+
+                ctx.beginPath();
+                ctx.fillStyle = "rgba(230,0,20,0.2)"
+                ctx.arc(x,y,r,0,2*Math.PI,true);
+                ctx.fill();
+
+            })
+            agents.forEach((agent,i) => {
+                let {x,y} = camera_point_to_canvas(agent.x,agent.y)
+                let r = camera_length_to_canvas(0.02);
+
+                ctx.beginPath();
+                ctx.fillStyle = "rgb(100,0,100)"
+                ctx.arc(x,y,r,0,2*Math.PI,true);
+                ctx.fill();
+
+            });
+            
+            window.requestAnimationFrame(plot)
+        }
+
+        canvas.onclick = e=>{
+            let x = e.offsetX * camera.width / canvas.width + camera.left;
+            let y = camera.top - e.offsetY * camera_height() /canvas.height  ;
+            
+            add_agents({x,y});
+            console.log(agents)
+        }
+
+
+        window.requestAnimationFrame(plot);
+
+    </script>
+
+</body>
+
+</html>
